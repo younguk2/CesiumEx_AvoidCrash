@@ -1,0 +1,392 @@
+<!--http-server -p 7777-->
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>test</title>
+    <script src="./Cesium/Cesium.js"></script>
+    <link href="./Cesium/Widgets/widgets.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/ol@v10.4.0/dist/ol.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.4.0/ol.css">
+
+    <style>
+        html,
+        body,
+        #world-container {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            position: absolute;
+            z-index: 11;
+            top: 10px;
+            left: 10px;
+            background: rgba(42, 42, 42, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        #world-container,
+        #map {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        #map {
+            display: none;
+        }
+
+        button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: none;
+            background: #0078D7;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background: #005A9E;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="world-container"></div>
+    <div class="toolbar">
+        <button onclick="setMode(0)">2d</button>
+        <button onclick="setMode(1)">3d</button>
+    </div>
+
+    <div id="map"></div>
+    <script>
+        const viewer = new Cesium.Viewer("world-container", {
+            imageryProvider: false,
+            animation: false,
+            infoBox: false,
+            selectionIndicator: false,
+            timeline: false,
+            vrButton: false,
+            homeButton: false,
+            sceneModePicker: false,
+            geocoder: false,
+            navigationInstructionsInitiallyVisible: false,
+            navigationHelpButton: false,
+            baseLayerPicker: false,
+            fullscreenButton: false,
+            shouldAnimate: false,
+            requestWaterMask: true,
+            requestVertexNormals: true,
+            contextOptions: {
+                requestWebgl2: true,
+                webgl: {
+                    alpha: true,
+                    depth: true,
+                    stencil: true,
+                    antialias: true,
+                    premultipliedAlpha: true,
+                    preserveDrawingBuffer: true,
+                    failIfMajorPerformanceCaveat: true,
+                },
+            },
+        });
+
+        viewer.scene.screenSpaceCameraController.rotateEventTypes = 0;
+        viewer.scene.screenSpaceCameraController.tiltEventTypes[0] = 1;
+        viewer.scene.screenSpaceCameraController.zoomEventTypes[0] = 3;
+        viewer.scene.screenSpaceCameraController.zoomEventTypes[1] = 3;
+        viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+            url: 'https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg',
+            maximumLevel: 18,
+        }), false);
+        const seoulPosition = Cesium.Cartesian3.fromDegrees(126.9780, 37.5665, 3000);
+
+        function setMode(mode) {
+            if (mode) {
+
+                document.getElementById('world-container').style.display = 'block';
+                document.getElementById('map').style.display = 'none';
+                //viewer.scene.mode = 3;
+            } else {
+                const position = viewer.camera.pickEllipsoid({ x: window.innerWidth / 2, y: window.innerHeight / 2 }, viewer.scene.globe.ellipsoid);
+
+                if (position) {
+                    const carto = Cesium.Cartographic.fromCartesian(position);
+                    const lon = Cesium.Math.toDegrees(carto.longitude);
+                    const lat = Cesium.Math.toDegrees(carto.latitude);
+
+                    map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+                    viewer.camera.flyTo({
+                        duration: 1,
+                        destination: Cesium.Cartesian3.fromRadians(carto.longitude, carto.latitude, viewer.camera.positionCartographic.height),
+                        complete: () => {
+                            //viewer.scene.mode = 2;
+
+                            document.getElementById('world-container').style.display = 'none';
+                            document.getElementById('map').style.display = 'block';
+                        }
+                    });
+                } else {
+
+                    const carto = Cesium.Cartographic.fromCartesian(viewer.camera.position);
+                    const lon = Cesium.Math.toDegrees(carto.longitude);
+                    const lat = Cesium.Math.toDegrees(carto.latitude);
+
+                    map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+                    viewer.camera.flyTo({
+                        duration: 1,
+                        destination: viewer.camera.position,
+                        complete: () => {
+                            //viewer.scene.mode = 2;
+                            document.getElementById('world-container').style.display = 'none';
+                            document.getElementById('map').style.display = 'block';
+                        }
+                    });
+                }
+            }
+        }
+        const map = new ol.Map({
+            target: 'map',
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.XYZ({
+                        url: 'https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg'
+                    })
+                })
+            ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([128.0, 37.0]),
+                zoom: 15
+            })
+        });
+
+
+
+        const windData = [
+            { lon: 127.0, lat: 37.5, U: 5, V: 3 },
+            { lon: 127.00002, lat: 37.5, U: 2, V: 1 },
+            { lon: 127.00004, lat: 37.5, U: -5, V: 3 },
+            { lon: 127.00006, lat: 37.5, U: 2, V: 3 },
+            { lon: 127.00008, lat: 37.5, U: -2, V: 6 },
+            { lon: 127.00010, lat: 37.5, U: -4, V: -1 }
+        ];
+        const scale = 100000;
+
+        const windEndpoints = windData.map(({ lon, lat, U, V }) => {
+            const lonEnd = lon + (U / scale) * Math.cos(lat * (Math.PI / 180));
+            const latEnd = lat + (V / scale);
+
+            return { lon, lat, lonEnd, latEnd };
+        });
+
+        // // 바람 화살표 추가 함수
+        // function addWindArrow(viewer, lon, lat, U, V) {
+        //   const lengthScale = 50000; // 화살표 길이 조절
+        //   const arrowLength = Math.sqrt(U * U + V * V) * lengthScale;
+
+        //   // 화살표 끝점 계산
+        //   const endLon = lon + (U / arrowLength) * 0.1; // 이동 거리 조절
+        //   const endLat = lat + (V / arrowLength) * 0.1;
+
+        //   // 화살표 엔티티 추가
+        //   window.aaa = viewer.entities.add({
+        //     polyline: {
+        //       positions: Cesium.Cartesian3.fromDegreesArrayHeights([lon, lat,100, endLon, endLat,100]),
+        //       width: 3,
+        //       material: new Cesium.PolylineArrowMaterialProperty(Cesium.Color.CYAN)
+        //     }
+        //   });
+        // }
+
+        // // 바람 데이터로 화살표 추가
+        // windData.forEach(({ lon, lat, U, V }) => {
+        //   addWindArrow(viewer, lon, lat, U, V);
+        // });
+
+        // const windDirection = Cesium.Cartesian3.normalize(
+        //     new Cesium.Cartesian3(1.0, 0.0, 0.0), // 동쪽 방향
+        //     new Cesium.Cartesian3()
+        // );
+        // const arrowEntity = viewer.entities.add({
+        //     position: Cesium.Cartesian3.fromDegrees(128.0, 37, 100.0),
+        //     arrow: {
+        //         direction: windDirection,
+        //         length: 100000.0, // 화살표 길이
+        //         material: Cesium.Color.RED
+        //     }
+        // });
+        viewer.camera.setView({
+            destination: Cesium.Cartesian3.fromDegrees(127.0, 37.5, 100.0) // 카메라 위치 설정
+        });
+        // const arrowEntity2 = viewer.entities.add({
+        //     polyline: {
+        //         positions: Cesium.Cartesian3.fromDegreesArrayHeights([
+        //             128.0, 37.0, 100.0, // 시작점
+        //             129.0, 37.0, 100.0  // 끝점
+        //         ]),
+        //         width: 5.0,
+        //         material: Cesium.Color.RED,
+        //         arrow: Cesium.PolylineArrow.END // 화살표를 끝에 추가
+        //     }
+        // });
+        windEndpoints.forEach((w) => {
+            viewer.entities.add({
+                polyline: {
+                    positions: Cesium.Cartesian3.fromDegreesArrayHeights([w.lon, w.lat, (Math.random() * 50), w.lonEnd, w.latEnd, (Math.random() * 50)]),
+                    width: 13.0,
+                    material: new Cesium.PolylineArrowMaterialProperty(Cesium.Color.CYAN)
+                }
+            });
+            //             polyline.material = new Cesium.Material({
+            //     fabric : {
+            //         materials : {
+            //             // The arrowMaterial provides the color and overall shape.
+            //             arrowMaterial : {
+            //                 type : 'PolylineArrow',
+            //                 uniforms : {
+            //                     color : Cesium.Color.fromRandom()
+            //                 }
+            //             },
+            //             // The dashMaterial will punch holes in the arrowMaterial.
+            //             // Uniforms could be added to control the dash parameters.
+            //             // "headMaterial" is copy-paste of the arrow head size code, written to alpha.
+            //             // It is used to mask out the dashes, to keep them from destroying the arrow head.
+            //             // A small tail is included behind the arrow head, to keep it from becoming a triangle.
+            //             dashMaterial : {
+            //                 type : 'PolylineSolid',
+            //             },
+            //             headMaterial : {
+            //                 source :
+            //                 'czm_material czm_getMaterial(czm_materialInput materialInput) { \n' +
+            //                 '    czm_material material = czm_getDefaultMaterial(materialInput); \n' +
+            //                 '    vec2 st = materialInput.st; \n' +
+            //                 '#ifdef GL_OES_standard_derivatives \n' +
+            //                 // Original multiplier "10.0" changed to "15.0" to add short tail to head.
+            //                 '    float base = 1.0 - abs(fwidth(st.s)) * 15.0 * czm_pixelRatio; \n' +
+            //                 '#else \n' +
+            //                 '    float base = 0.975; // 2.5% of the line will be the arrow head \n' +
+            //                 '#endif \n' +
+            //                 '    material.alpha = 1.0 - smoothstep(base - 0.0001, base, st.s); \n' +
+            //                 '    return material; \n' +
+            //                 '} \n'
+            //             }
+            //         },
+            //         // Finally, the "alpha" contains a cheat, where we undo czm_discard from the dashMaterial.
+            //         components : {
+            //             diffuse : 'arrowMaterial.diffuse',
+            //             alpha : 'arrowMaterial.alpha * (1.0 - (headMaterial.alpha * (1.0 - dashMaterial.alpha))); czm_discard = false'
+            //         }
+            //     }
+            // });
+        });
+
+        viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(127.0, 37.5, 100.0),
+            point: {
+                pixelSize: 10,
+                color: Cesium.Color.RED
+            }
+        });
+
+
+
+
+
+        ////////////////////////////////////라벨테스트
+        function updateLabelVisibility() {
+            const labelBoxes = [];
+
+            viewer.entities.values.forEach(entity => {
+                if (!entity.label || !entity.position) return;
+                const canvasPosition = new Cesium.Cartesian2();
+                const success = viewer.scene.cartesianToCanvasCoordinates(
+                    entity.position.getValue(viewer.clock.currentTime),
+                    canvasPosition
+                );
+
+                if (success) {
+                    const cameraPosition = viewer.camera.positionWC;
+                    const entityPosition = entity.position.getValue(viewer.clock.currentTime);
+                    const distance = Cesium.Cartesian3.distance(cameraPosition, entityPosition);
+
+                    const text = entity.label.text.getValue();
+                    const fontSize = 20;
+                    const padding = 5;
+                    const box = {
+                        x: canvasPosition.x,
+                        y: canvasPosition.y,
+                        width: text.length * fontSize * 0.5 + padding,
+                        height: fontSize + padding,
+                        depth: distance,
+                        entity
+                    };
+                    let isHidden = false;
+                    for (const otherBox of labelBoxes) {
+                        if (
+                            Math.abs(box.x - otherBox.x) < (box.width + otherBox.width) / 2 &&
+                            Math.abs(box.y - otherBox.y) < (box.height + otherBox.height) / 2
+                        ) {
+                            if (box.depth > otherBox.depth) {
+                                isHidden = true;
+                            } else {
+                                otherBox.entity.label.show = false;
+                            }
+                        }
+                    }
+
+                    entity.label.show = !isHidden;
+                    if (!isHidden) {
+                        labelBoxes.push(box);
+                    }
+                }
+            });
+        }
+
+        viewer.scene.postRender.addEventListener(updateLabelVisibility);
+
+        viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(127.0, 37.5, 5),
+            label: {
+                text: "라벨1",
+                font: "20px sans-serif",
+                fillColor: Cesium.Color.WHITE,
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 2,
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            }
+        });
+        viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(127.0001, 37.5, 5),
+            label: {
+                text: "라벨2",
+                font: "20px sans-serif",
+                fillColor: Cesium.Color.WHITE,
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 2,
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            }
+        });
+        viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(127.0002, 37.5, 5),
+            label: {
+                text: "라벨3",
+                font: "20px sans-serif",
+                fillColor: Cesium.Color.WHITE,
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 2,
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            }
+        });
+    </script>
+
+</body>
+
+</html>
